@@ -1,2 +1,2 @@
-# algorithm_note
-Here are the algorithm notes
+# algorithm_notes
+Here are my algorithm notes
