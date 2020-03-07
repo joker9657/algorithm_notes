@@ -150,3 +150,118 @@ head = null;
 2. 如果链表只包含一个节点时，代码是否能正常工作？
 3. 如果链表只包含两个节点时，代码是否能正常工作？
 4. 代码逻辑在处理头尾节点时是否能正常工作？
+
+
+内存中的堆栈和数据结构堆栈不是一个概念，可以说内存中的堆栈是真实存在的物理区，数据结构中的堆栈是抽象的数据存储结构。
+        内存空间在逻辑上分为三部分：代码区、静态数据区和动态数据区，动态数据区又分为栈区和堆区。
+代码区：存储方法体的二进制代码。高级调度（作业调度）、中级调度（内存调度）、低级调度（进程调度）控制代码区执行代码的切换。
+静态数据区：存储全局变量、静态变量、常量，常量包括final修饰的常量和String常量。系统自动分配和回收。
+栈区：存储运行方法的形参、局部变量、返回值。由系统自动分配和回收。
+堆区：new一个对象的引用或地址存储在栈区，指向该对象存储在堆区中的真实数据。
+
+## 队列的概念
+队列跟栈一样，也是一种操作受限的线性表数据结构，具有先进先出（First In First Out）的特性。支持在队尾插入元素，在队头删除元素。用数组实现的队列叫作顺序队列，用链表实现的队列叫作链式队列。
+
+```java
+// 用数组实现的队列 
+public class ArrayQueue {
+    // 数组:items，数组大小:n
+    private String[] items;
+    private int n = 0;
+    // head表示队头下标，tail表示队尾下标 
+    private int head = 0;
+    private int tail = 0;
+    // 申请一个大小为capacity的数组 
+    public ArrayQueue(int capacity) {
+        items = new String[capacity]; 
+        n = capacity;
+    }
+    // 入队，将item放入队尾
+    public boolean enqueue(String item) {
+        // tail == n表示队列末尾没有空间了 
+        if (tail == n) {
+            // tail ==n && head==0，表示整个队列都占满了 
+            if (head == 0) return false;
+            // 数据搬移
+            for (int i = head; i < tail; ++i) {
+                items[i-head] = items[i];
+            }
+            // 搬移完之后重新更新head和tail
+            tail -= head; 
+            head = 0;
+        }
+        items[tail] = item;
+        ++tail; 
+        return true;
+    }
+    // 出队
+    public String dequeue() {
+        // 如果head == tail 表示队列为空
+        if (head == tail) return null;
+        String ret = items[head];
+        ++head;
+        return ret;
+    }
+}
+```
+
+> 在正常情况下，队列的入队和出队操作时间复杂度都是O(1)，在进行“数据搬移”改造的情况下，入队的时间复杂度我是这么分析的：如果队尾没有满，可以直接入队，时间复杂度为O(1)。
+如果队尾已满的情况下，就必须进行数据搬移了，tail=n,搬移的时间复杂度为O(n).
+总体情况来看，tail的可能是0 ~ n的任意值，在0 ~ n-1的时候队列入队的时间复杂度都是O(1)，不需要搬移直接入队即可；只有当 tail = n 的时候时间复杂度才迅速飙升为O(n)，即需要进行n次搬移，此时n次的搬移如果均摊到0 ~ n-1这n次上，其实总体的均摊复杂度还是O(1)。
+
+```java
+// 循环队列实现
+public class CircularQueue {
+  // 数组：items，数组大小：n
+  private String[] items;
+  private int n = 0;
+  // head表示队头下标，tail表示队尾下标
+  private int head = 0;
+  private int tail = 0;
+
+  // 申请一个大小为capacity的数组
+  public CircularQueue(int capacity) {
+    items = new String[capacity];
+    n = capacity;
+  }
+
+  // 入队
+  public boolean enqueue(String item) {
+    // 队列满了
+    if ((tail + 1) % n == head) return false;
+    items[tail] = item;
+    tail = (tail + 1) % n;
+    return true;
+  }
+
+  // 出队
+  public String dequeue() {
+    // 如果head == tail 表示队列为空
+    if (head == tail) return null;
+    String ret = items[head];
+    head = (head + 1) % n;
+    return ret;
+  }
+
+  public void printAll() {
+    if (0 == n) return;
+    for (int i = head; i % n != tail; i = (i + 1) % n) {
+      System.out.print(items[i] + " ");
+    }
+    System.out.println();
+  }
+}
+```
+
+## Q：当我们向固定大小的线程池中请求一个线程时，如果线程池中没有空闲资源了，这个时候线程池如何处理这个请求?是拒绝请求还是排队请求?各种处理策略又是怎么实现的呢?
+我们一般有两种处理策略。第一种是非阻塞的处理方式，直接拒绝任务请求;另一种是阻塞的处理方式，将请求排队，等到有空闲线程时，取出排队的请求继续处理。  
+那如何存储排队的请求呢?  
+我们希望公平地处理每个排队的请求，先进者先服务，所以队列这种数据结构很适合来存储排队请求。我们前面说过，队列有基于链表和基于数组这两种实现方式。这两种实现方式对于排队请求又有什么区别呢?  
+基于链表的实现方式，可以实现一个支持无限排队的无界队列(unbounded queue)，但是可能会导致过多的请求排队等待，请求处理的响应时间过长。所以，针对响应时间比较敏感的系统，基于链表实现的无限排队的线程池是不合适的。  
+而基于数组实现的有界队列(bounded queue)，队列的大小有限，所以线程池中排队的请求超过队列大小时，接下来的请求就会被拒绝，这种方式对响应时间敏 感的系统来说，就相对更加合理。不过，设置一个合理的队列大小，也是非常有讲究的。队列太大导致等待的请求太多，队列太小会导致无法充分利用系统资源、发挥最大性能。  
+除了前面讲到队列应用在线程池请求排队的场景之外，队列可以应用在任何有限资源池中，用于排队请求，比如数据库连接池等。实际上，对于大部分资源有限的场景，当没有空闲资源时，基本上都可以通过“队列”这种数据结构来实现请求排队。
+
+
+
+
+
